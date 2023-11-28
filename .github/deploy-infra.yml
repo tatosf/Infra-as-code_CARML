@@ -1,0 +1,25 @@
+name: Deploy Azure Infrastructure
+
+on:
+  push:
+    branches:
+      - main 
+
+env:
+  ACR_ADMIN_USERNAME: ${{ secrets.ACR_ADMIN_USERNAME }}
+  ACR_ADMIN_PASSWORD: ${{ secrets.ACR_ADMIN_PASSWORD }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy Bicep template
+      run: |
+        az deployment group create --resource-group aguadamillas_students_1 --template-file ./main.bicep --parameters acrAdminUsername=$ACR_ADMIN_USERNAME acrAdminPassword=$ACR_ADMIN_PASSWORD
