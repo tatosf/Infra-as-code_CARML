@@ -22,4 +22,8 @@ jobs:
 
     - name: Deploy Bicep template
       run: |
-        az deployment group create --resource-group aguadamillas_students_1 --template-file ./main.bicep --parameters acrAdminUsername=$ACR_ADMIN_USERNAME acrAdminPassword=$ACR_ADMIN_PASSWORD
+        az deployment group create --resource-group myResourceGroup \
+          --template-file ./main.bicep \
+          --parameters @main.parameters.json \
+          acrAdminUsername=${{ secrets.ACR_ADMIN_USERNAME }} \
+          acrAdminPassword=${{ secrets.ACR_ADMIN_PASSWORD }}

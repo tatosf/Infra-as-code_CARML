@@ -4,7 +4,9 @@ param webAppName string
 param location string
 param containerImageName string
 param containerImageTag string
+param acrLoginServer string
 param acrAdminUsername string
+@secure()
 param acrAdminPassword string
 
 
@@ -43,7 +45,7 @@ resource webApp 'Microsoft.Web/sites@2021-01-15' = {
   properties: {
     serverFarmId: servicePlan.id
     siteConfig: {
-      linuxFxVersion: 'DOCKER|${acr.loginServer}/${containerImageName}:${containerImageTag}'
+      linuxFxVersion: 'DOCKER|${acrLoginServer}/${containerImageName}:${containerImageTag}'
       appSettings: [
         {
           name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
@@ -51,7 +53,7 @@ resource webApp 'Microsoft.Web/sites@2021-01-15' = {
         },
         {
           name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: acr.properties.loginServer
+          value: acrLoginServer
         },
         {
           name: 'DOCKER_REGISTRY_SERVER_USERNAME'
@@ -65,3 +67,4 @@ resource webApp 'Microsoft.Web/sites@2021-01-15' = {
     }
   }
 }
+
