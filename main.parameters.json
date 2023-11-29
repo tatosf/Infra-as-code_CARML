@@ -2,20 +2,24 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "acrName": {
-            "value": "IEwoonhaoContainerRegistry"
-        },
-        "servicePlanName": {
-            "value": "myAppServicePlanProd" 
-        },
-        "webAppName": {
-            "value": "myWebAppProd" 
-        },
-        "containerImageName": {
-            "value": "myContainerImage" 
-        },
-        "containerImageTag": {
-            "value": "latest" 
-        }
+      "location": {
+        "value": "westus"
+      },
+      "acrName": {
+        "value": "santiagof"
+      },
+      "appServicePlanName": {
+        "value": "AppServicePlanSfischel"
+      },
+      "webAppName": {
+        "value": "SfischelWebApp"
+      },
+      "containerRegistryImageName": {
+        "value": "sfischelImage"
+      },
+      "containerRegistryImageVersion": {
+        "value": "latest" 
+      }
     }
-}
+  }
+  

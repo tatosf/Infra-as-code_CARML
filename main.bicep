@@ -1,70 +1,58 @@
-param acrName string
-param servicePlanName string
-param webAppName string
 param location string
-param containerImageName string
-param containerImageTag string
-param acrLoginServer string
-param acrAdminUsername string
+param acrName string
+param appServicePlanName string
+param webAppName string
+param containerRegistryImageName string
+param containerRegistryImageVersion string
+param acrUsername string
 @secure()
-param acrAdminPassword string
+param acrPassword string
 
-
-
-resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
-  name: acrName
-  location: location
-  properties: {
-    adminUserEnabled: true
-  }
-  sku: {
-    name: 'Basic'
+// Azure Container Registry
+module acr 'modules/container-registry/registry/main.bicep' = {
+  name: '${acrName}-deploy'
+  params: {
+    name: acrName
+    location: location
+    acrAdminUserEnabled: true
   }
 }
 
-resource servicePlan 'Microsoft.Web/serverfarms@2021-01-15' = {
-  name: servicePlanName
-  location: location
-  kind: 'linux'
-  properties: {
+// Azure Service Plan for Linux
+module appServicePlan 'modules/web/serverfarm/main.bicep' = {
+  name: '${appServicePlanName}-deploy'
+  params: {
+    name: appServicePlanName
+    location: location
+    sku: {
+      capacity: 1
+      family: 'B'
+      name: 'B1'
+      size: 'B1'
+      tier: 'Basic'
+    }
     reserved: true
   }
-  sku: {
-    name: 'B1'
-    tier: 'Basic'
-    size: 'B1'
-    family: 'B'
-    capacity: 1
-  }
 }
 
-resource webApp 'Microsoft.Web/sites@2021-01-15' = {
-  name: webAppName
-  location: location
-  kind: 'app'
-  properties: {
-    serverFarmId: servicePlan.id
+// Azure Web App for Linux containers
+// Azure Web App for Linux containers
+module webApp 'modules/web/site/main.bicep' = {
+  name: '${webAppName}-deploy'
+  params: {
+    name: webAppName
+    location: location
+    kind: 'app'
+    serverFarmResourceId: resourceId('Microsoft.Web/serverfarms', appServicePlanName)
     siteConfig: {
-      linuxFxVersion: 'DOCKER|${acrLoginServer}/${containerImageName}:${containerImageTag}'
-      appSettings: [
-        {
-          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-          value: 'false'
-        },
-        {
-          name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: acrLoginServer
-        },
-        {
-          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-          value: acrAdminUsername
-        },
-        {
-          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-          value: acrAdminPassword
-        }
-      ]
+      linuxFxVersion: 'DOCKER|${acrName}.azurecr.io/${containerRegistryImageName}:${containerRegistryImageVersion}'
+      appCommandLine: ''
+    }
+    appSettingsKeyValuePairs: {
+      WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'false'
+      DOCKER_REGISTRY_SERVER_URL: '${acrName}.azurecr.io'
+      DOCKER_REGISTRY_SERVER_USERNAME: acrUsername
+      DOCKER_REGISTRY_SERVER_PASSWORD: acrPassword
     }
   }
 }
-
