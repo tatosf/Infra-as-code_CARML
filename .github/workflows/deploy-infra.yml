@@ -17,5 +17,7 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     - name: Deploy to Azure
       run: |
-        az deployment group create --resource-group aguadamillas_students_1 --template-file main.bicep --parameters main.parameters.json --parameters acrUsername=${{ secrets.ACR_ADMIN_USERNAME }} acrPassword=${{ secrets.ACR_ADMIN_PASSWORD }}
+        az deployment group create --resource-group aguadamillas_students_1 
+        --template-file main.bicep --parameters main.parameters.json 
+        --parameters acrUsername=${{ secrets.ACR_ADMIN_USERNAME }} acrPassword=${{ secrets.ACR_ADMIN_PASSWORD }}
 
