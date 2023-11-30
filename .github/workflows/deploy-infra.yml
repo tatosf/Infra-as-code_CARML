@@ -41,6 +41,9 @@ jobs:
     - name: Set image version
       id: image-version
       run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
+    
+    - name: List directory contents
+      run: ls -la
 
     - name: Build and push image
       working-directory: ./app
