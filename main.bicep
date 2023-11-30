@@ -35,7 +35,7 @@ module appServicePlan 'modules/web/serverfarm/main.bicep' = {
   }
 }
 
-// Azure Web App for Linux containers
+
 // Azure Web App for Linux containers
 module webApp 'modules/web/site/main.bicep' = {
   name: '${webAppName}-deploy'
