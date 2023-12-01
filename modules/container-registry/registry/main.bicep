@@ -140,6 +140,14 @@ param customerManagedKey customerManagedKeyType
 @description('Optional. Array of Cache Rules. Note: This is a preview feature ([ref](https://learn.microsoft.com/en-us/azure/container-registry/tutorial-registry-cache#cache-for-acr-preview)).')
 param cacheRules array = []
 
+param adminCredentialsKeyVaultResourceId string = ''
+ @secure()
+ param adminCredentialsKeyVaultSecretUserName string = ''
+ @secure()
+ param adminCredentialsKeyVaultSecretUserPassword1 string  = ''
+ @secure()
+ param adminCredentialsKeyVaultSecretUserPassword2 string
+
 var formattedUserAssignedIdentities = reduce(map((managedIdentities.?userAssignedResourceIds ?? []), (id) => { '${id}': {} }), {}, (cur, next) => union(cur, next)) // Converts the flat array to an object like { '${id1}': {}, '${id2}': {} }
 
 var identity = !empty(managedIdentities) ? {
@@ -295,6 +303,35 @@ resource registry_lock 'Microsoft.Authorization/locks@2020-05-01' = if (!empty(l
     notes: lock.?kind == 'CanNotDelete' ? 'Cannot delete resource or child resources.' : 'Cannot delete or modify the resource or child resources.'
   }
   scope: registry
+}
+
+resource adminCredentialsKeyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = if (!empty(adminCredentialsKeyVaultResourceId)) {
+  name: last(split((!empty(adminCredentialsKeyVaultResourceId) ? adminCredentialsKeyVaultResourceId: 'dummyVault'), '/'))!
+  //scope: resourceGroup(split(adminCredentialsKeyVaultResourceId, '/')[2], split(adminCredentialsKeyVaultResourceId, '/')[4])
+}
+
+resource secretAdminUserName 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = if (!empty(adminCredentialsKeyVaultSecretUserName)) {
+  name: !empty(adminCredentialsKeyVaultSecretUserName) ? adminCredentialsKeyVaultSecretUserName : 'dummySecret'
+  parent: adminCredentialsKeyVault
+  properties: {
+    value: registry.listCredentials().username
+  }
+}
+
+resource secretAdminPassword1 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = if (!empty(adminCredentialsKeyVaultSecretUserPassword1)) {
+  name: !empty(adminCredentialsKeyVaultSecretUserPassword1) ? adminCredentialsKeyVaultSecretUserPassword1 : 'dummySecret'
+  parent: adminCredentialsKeyVault
+  properties: {
+    value: registry.listCredentials().passwords[0].value
+  }
+}
+
+resource secretAdminPassword2 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = if (!empty(adminCredentialsKeyVaultSecretUserPassword2)) {
+  name: !empty(adminCredentialsKeyVaultSecretUserPassword2) ? adminCredentialsKeyVaultSecretUserPassword2 : 'dummySecret'
+  parent: adminCredentialsKeyVault
+  properties: {
+    value: registry.listCredentials().passwords[1].value
+  }
 }
 
 resource registry_diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = [for (diagnosticSetting, index) in (diagnosticSettings ?? []): {

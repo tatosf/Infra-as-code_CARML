@@ -4,9 +4,17 @@ param appServicePlanName string
 param webAppName string
 param containerRegistryImageName string
 param containerRegistryImageVersion string
-param acrUsername string
 @secure()
-param acrPassword string
+param keyVaultName string 
+param kevVaultSecretNameACRUsername string = 'acr-username'
+param kevVaultSecretNameACRPassword1 string = 'acr-password1'
+param kevVaultSecretNameACRPassword2 string = 'acr-password2'
+
+// Reference to existing Key Vault
+resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
+  name: keyVaultName
+}
+
 
 // Azure Container Registry
 module acr 'modules/container-registry/registry/main.bicep' = {
@@ -15,6 +23,10 @@ module acr 'modules/container-registry/registry/main.bicep' = {
     name: acrName
     location: location
     acrAdminUserEnabled: true
+    adminCredentialsKeyVaultResourceId: resourceId('Microsoft.KeyVault/vaults', keyVaultName)
+    adminCredentialsKeyVaultSecretUserName: kevVaultSecretNameACRUsername
+    adminCredentialsKeyVaultSecretUserPassword1: kevVaultSecretNameACRPassword1
+    adminCredentialsKeyVaultSecretUserPassword2: kevVaultSecretNameACRPassword2
   }
 }
 
@@ -38,6 +50,11 @@ module appServicePlan 'modules/web/serverfarm/main.bicep' = {
 
 // Azure Web App for Linux containers
 module webApp 'modules/web/site/main.bicep' = {
+  dependsOn: [
+    appServicePlan
+    acr
+    keyVault
+  ]
   name: '${webAppName}-deploy'
   params: {
     name: webAppName
@@ -51,8 +68,8 @@ module webApp 'modules/web/site/main.bicep' = {
     appSettingsKeyValuePairs: {
       WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'false'
       DOCKER_REGISTRY_SERVER_URL: '${acrName}.azurecr.io'
-      DOCKER_REGISTRY_SERVER_USERNAME: acrUsername
-      DOCKER_REGISTRY_SERVER_PASSWORD: acrPassword
+      DOCKER_REGISTRY_SERVER_USERNAME: kevVaultSecretNameACRUsername
+      DOCKER_REGISTRY_SERVER_PASSWORD: kevVaultSecretNameACRPassword1
     }
   }
 }

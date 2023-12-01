@@ -19,6 +19,9 @@
       },
       "containerRegistryImageVersion": {
         "value": "latest" 
+      },
+      "keyVaultName": {
+        "value": "santiagof-kv" 
       }
     }
   }
