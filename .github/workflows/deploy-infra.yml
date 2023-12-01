@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@main
+        uses: actions/checkout@v2
   
       - name: Login to Azure
         uses: azure/login@v1
@@ -33,16 +33,15 @@ jobs:
   
       - name: Get ACR credentials from Key Vault
         run: |
-          echo "ACR_USERNAME=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
-          echo "ACR_PASSWORD=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+          ACR_USERNAME=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
+          ACR_PASSWORD=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
+          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
   
       - name: Set image version
         id: image-version
         run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
       
-      - name: List directory contents
-        run: ls -la
-  
       - name: Build and push image
         run: |
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
@@ -54,4 +53,5 @@ jobs:
           app-name: ${{ secrets.WEB_APP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
+        
           
