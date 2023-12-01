@@ -54,13 +54,12 @@ jobs:
       uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ secrets.WEB_APP_NAME }}
-        slot-name: 'production'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
 
 
 
 
-        
+
 
 
