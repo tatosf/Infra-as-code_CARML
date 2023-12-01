@@ -49,7 +49,7 @@ jobs:
       run: |
         docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
         docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-
+        
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
