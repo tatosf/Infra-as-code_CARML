@@ -55,3 +55,6 @@ jobs:
           images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
         
           
+
+
+          
