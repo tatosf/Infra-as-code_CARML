@@ -11,60 +11,57 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
+
       - name: Set up Azure CLI
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}        
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Deploy Key Vault
+      - name: Deploy Key Vault
+        run: |
+          az deployment group create --resource-group aguadamillas_students_1 --template-file ./infra/key-vault.bicep --parameters ./infra/parameters/key-vault.json --name "sfischel-kv"
+
+      # Deploy the rest of the infrastructure
       - name: Deploy to Azure
         run: |
           az deployment group create --resource-group aguadamillas_students_1 --template-file main.bicep --parameters main.parameters.json
 
-          deploy-app:
-            needs: deploy_infrastructure
-            runs-on: ubuntu-latest
-            steps:
-              - name: Checkout code
-                uses: actions/checkout@v2
-          
-              - name: Login to Azure
-                uses: azure/login@v1
-                with:
-                  creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
-              - name: Get ACR credentials from Key Vault
-                run: |
-                  ACR_USERNAME=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
-                  ACR_PASSWORD=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
-                  echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
-                  echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
-        
-              - name: Login to Azure Container Registry
-                run: |
-                  echo $ACR_PASSWORD | docker login ${{ secrets.REGISTRY_LOGIN_SERVER }} -u $ACR_USERNAME --password-stdin
-          
-              - name: Set image version
-                id: image-version
-                run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
-              
-              - name: Build and push image
-                run: |
-                  docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-                  docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-                  
-              - name: Deploy to Azure Web App
-                uses: azure/webapps-deploy@v3
-                with:
-                  app-name: ${{ secrets.WEB_APP_NAME }}
-                  publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-                  images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-        
+  deploy-app:
+    needs: deploy_infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Get ACR credentials from Key Vault
+        run: |
+          ACR_USERNAME=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
+          ACR_PASSWORD=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
+          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
 
-          
-          
+      - name: Login to Azure Container Registry
+        run: |
+          echo $ACR_PASSWORD | docker login ${{ secrets.REGISTRY_LOGIN_SERVER }} -u $ACR_USERNAME --password-stdin
 
+      - name: Set image version
+        id: image-version
+        run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
 
+      - name: Build and push image
+        run: |
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
 
-
-          
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.WEB_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
