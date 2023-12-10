@@ -3,13 +3,13 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
       "keyVaultName": {
-          "value": "sfischel-kv1"
+          "value": "santiagof-kv"
       },
       "location": {
           "value": "westus"
       },
       "acrName": {
-          "value": "sfischel"
+          "value": "santiagof"
   }
 }
 }
