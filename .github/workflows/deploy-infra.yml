@@ -20,7 +20,7 @@ jobs:
       # Deploy Key Vault
       - name: Deploy Key Vault
         run: |
-          az deployment group create --resource-group aguadamillas_students_1 --template-file key-vault.bicep --parameters parameters/key-vault.parameters.json --name "sfischel-kv"
+          az deployment group create --resource-group aguadamillas_students_1 --template-file key-vault.bicep --parameters key-vault.parameters.json --name "sfischel-kv"
 
       # Deploy the rest of the infrastructure
       - name: Deploy to Azure
@@ -67,4 +67,3 @@ jobs:
           images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
 
 
-          
