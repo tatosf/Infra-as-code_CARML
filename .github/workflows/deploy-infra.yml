@@ -1,69 +1,56 @@
-name: CI/CD Pipeline
+name: deploy-infra
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+env:
+  RESOURCE_GROUP: aguadamillas_students_1
+  SUBSCRIPTION_ID: e0b9cada-61bc-4b5a-bd7a-52c606726b3b
+  USER_ALIAS: sfischel
+  KEY_VAULT_SECRET_NAME_ACR_USERNAME: acr-username
+  KEY_VAULT_SECRET_NAME_ACR_PASSWORD: acr-password1
+  KEY_VAULT_NAME: santiagof-kv
 
 jobs:
-  deploy_infrastructure:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
+      - uses: actions/checkout@main
+      - name: Run Bicep linter
+        run: az bicep build --file ./main.bicep
 
-      - name: Set up Azure CLI
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # Deploy Key Vault
-      - name: Deploy Key Vault
-        run: |
-          az deployment group create --resource-group aguadamillas_students_1 --template-file key-vault.bicep --parameters key-vault.parameters.json --name "sfischel-kv"
-
-      # Deploy the rest of the infrastructure
-      - name: Deploy to Azure
-        run: |
-          az deployment group create --resource-group aguadamillas_students_1 --template-file main.bicep --parameters main.parameters.json
-
-  deploy-app:
-    needs: deploy_infrastructure
+  deploy:
     runs-on: ubuntu-latest
+    needs: build
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Login to Azure
-        uses: azure/login@v1
+      - uses: actions/checkout@main
+      - name: 'Get docker registry credentials from Azure Key Vault'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "REGISTRY_USERNAME=$(az keyvault secret show --name ${{ env.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+            echo "REGISTRY_PASSWORD=$(az keyvault secret show --name ${{ env.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+      - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Get ACR credentials from Key Vault
-        run: |
-          ACR_USERNAME=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
-          ACR_PASSWORD=$(az keyvault secret show --name ${{ secrets.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ secrets.KEY_VAULT_NAME }} --query value -o tsv)
-          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
-          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
-
-      - name: Login to Azure Container Registry
-        run: |
-          echo $ACR_PASSWORD | docker login ${{ secrets.REGISTRY_LOGIN_SERVER }} -u $ACR_USERNAME --password-stdin
-
-      - name: Set image version
-        id: image-version
-        run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
-
-      - name: Build and push image
-        run: |
-          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+      - name: deploy-key-vault
+        uses: azure/arm-deploy@v1.0.9
         with:
-          app-name: ${{ secrets.WEB_APP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-
-
+          subscriptionId: ${{ env.SUBSCRIPTION_ID }}
+          resourceGroupName: ${{ env.RESOURCE_GROUP }}
+          template: ./key-vault.bicep
+          parameters: ./parameters/key-vault.parameters.json 
+          deploymentName: "${{ env.USER_ALIAS }}-kv"
+          failOnStdErr: false
+      - name: deploy-main
+        uses: azure/arm-deploy@v1.0.9
+        with:
+          subscriptionId: ${{ env.SUBSCRIPTION_ID }}
+          resourceGroupName: ${{ env.RESOURCE_GROUP }}
+          template: ./main.bicep
+          parameters: ./parameters/main.parameters.json 
+          deploymentName: ${{ env.USER_ALIAS }}
+          failOnStdErr: false
